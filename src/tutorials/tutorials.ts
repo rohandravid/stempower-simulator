@@ -92,6 +92,20 @@ function ledChainWired(ctx: TutorialCheckContext, pin: NodeId): boolean {
   return conn(pin, led.pins.anode) && throughResistorToGround(conn, led.pins.cathode, res);
 }
 
+/**
+ * Same as ledChainWired, but for boards with more than one LED: finds *any*
+ * LED (other than `excludeId`) wired pin -> anode, cathode -> resistor -> GND.
+ */
+function anyLedChainWired(ctx: TutorialCheckContext, pin: NodeId, excludeId?: string): PlacedComponent | undefined {
+  const conn = connectivity(ctx.circuit);
+  const resistors = ctx.circuit.components.filter((c) => c.kind === 'resistor');
+  return ctx.circuit.components.find((c) => {
+    if (c.kind !== 'led' || c.id === excludeId) return false;
+    if (!conn(pin, c.pins.anode)) return false;
+    return resistors.some((res) => throughResistorToGround(conn, c.pins.cathode, res));
+  });
+}
+
 const STARTER_CODE = `void setup() {
 
 }
@@ -521,10 +535,134 @@ const motorTutorial: Tutorial = {
 };
 
 // ---------------------------------------------------------------------------
+// Tutorial 5 — Speed trap
+// ---------------------------------------------------------------------------
+
+const SPEED_CODE = `const int SPEED_PIN = A0;    // AO pin of the radar sensor
+const int RED_PIN = 12;
+const int BLUE_PIN = 13;
+const int SPEED_LIMIT = 55;  // mph
+
+void setup() {
+  pinMode(RED_PIN, OUTPUT);
+  pinMode(BLUE_PIN, OUTPUT);
+  Serial.begin(9600);
+}
+
+void loop() {
+  int reading = analogRead(SPEED_PIN);
+  int mph = map(reading, 0, 1023, 0, 100);
+  Serial.print("Speed: ");
+  Serial.print(mph);
+  Serial.println(" mph");
+
+  if (mph > SPEED_LIMIT) {
+    digitalWrite(RED_PIN, HIGH);
+    digitalWrite(BLUE_PIN, LOW);
+    delay(200);
+    digitalWrite(RED_PIN, LOW);
+    digitalWrite(BLUE_PIN, HIGH);
+    delay(200);
+  } else {
+    digitalWrite(RED_PIN, LOW);
+    digitalWrite(BLUE_PIN, LOW);
+    delay(200);
+  }
+}
+`;
+
+const speedTrapTutorial: Tutorial = {
+  demoId: 'speedtrap',
+  name: 'Speed trap',
+  starterCode: STARTER_CODE,
+  steps: [
+    {
+      title: 'The plan',
+      body: 'We’ll build a police speed trap: a radar sensor measures a passing car’s speed, and when it’s over the limit, red and blue lights alternate like a real patrol car.\n\nThe radar module has an AO (analog out) pin whose voltage rises with speed — perfect for analogRead.',
+    },
+    {
+      title: 'Build the police lights',
+      body: 'From the Parts panel, add two LEDs and two resistors — one pair for the red light, one pair for the blue light.',
+      checkLabel: 'Two LEDs and two resistors on the board',
+      check: (ctx) => {
+        const leds = ctx.circuit.components.filter((c) => c.kind === 'led').length;
+        const resistors = ctx.circuit.components.filter((c) => c.kind === 'resistor').length;
+        return leds >= 2 && resistors >= 2;
+      },
+    },
+    {
+      title: 'Wire the red light',
+      body: 'Wire pin 12 to one LED’s + column. Then wire that LED’s − column through a resistor to GND — same chain as every LED you’ve built.',
+      checkLabel: 'Pin 12 → LED → resistor → GND',
+      check: (ctx) => Boolean(anyLedChainWired(ctx, 'uno.D12')),
+    },
+    {
+      title: 'Wire the blue light',
+      body: 'Now do the same for the other LED: pin 13 → LED → resistor → GND. Use the second LED and resistor you added.',
+      checkLabel: 'Pin 13 → a different LED → resistor → GND',
+      check: (ctx) => {
+        const red = anyLedChainWired(ctx, 'uno.D12');
+        return Boolean(anyLedChainWired(ctx, 'uno.D13', red?.id));
+      },
+    },
+    {
+      title: 'Add the radar sensor',
+      body: 'Click Speed sensor in the Parts panel. It lands as a module below the boards with three pins: VCC, GND, and AO — plus a speed slider so you can invent your own traffic.',
+      checkLabel: 'Add the speed sensor',
+      check: (ctx) => Boolean(find(ctx.circuit, 'radar')),
+    },
+    {
+      title: 'Power the sensor',
+      body: 'Wire the Uno’s 5V to the sensor’s VCC, and the sensor’s GND to a GND pin on the Uno.',
+      checkLabel: '5V → VCC and GND → GND',
+      check: (ctx) => {
+        const conn = connectivity(ctx.circuit);
+        const s = find(ctx.circuit, 'radar');
+        return Boolean(s) && toSupply(conn, s!.pins.vcc) && toGround(conn, s!.pins.gnd);
+      },
+    },
+    {
+      title: 'Connect the signal',
+      body: 'Wire the sensor’s AO pin to A0 on the Uno. That’s the analog voltage your code will read as a speed.',
+      checkLabel: 'AO → A0',
+      check: (ctx) => {
+        const s = find(ctx.circuit, 'radar');
+        return Boolean(s) && connectivity(ctx.circuit)(s!.pins.ao, 'uno.A0');
+      },
+    },
+    {
+      title: 'Write the speed-trap code',
+      body: 'Read the sensor, convert it to mph with map(), and compare it to a speed limit. Over the limit? Alternate the red and blue LEDs. Under it? Keep both off.',
+      code: SPEED_CODE,
+      checkLabel: 'Code uses analogRead, map and if / else',
+      check: (ctx) => codeHas(ctx.code, /analogRead\s*\(/, /map\s*\(/, /if\s*\(/, /else/),
+    },
+    {
+      title: 'Catch a speeder!',
+      body: 'Press Run, then drag the sensor’s speed slider above 55 mph. The red and blue LEDs should start alternating — busted! Drag it back down and the lights turn off.',
+      checkLabel: 'Running with the sensor over the speed limit and a light lit',
+      check: (ctx) => {
+        const s = find(ctx.circuit, 'radar');
+        return (
+          ctx.status === 'running' &&
+          (s?.props.speedMph ?? 0) > 55 &&
+          Object.values(ctx.dynamic.leds).some((l) => l.lit)
+        );
+      },
+    },
+    {
+      title: 'Busted! 🚨',
+      body: 'You just built a real analog sensor circuit with two-way indicator logic — the same pattern behind traffic radar, alarms, and warning lights everywhere.\n\nChallenge: add a Serial.println() that only prints "SPEEDING!" when a car is over the limit.',
+    },
+  ],
+};
+
+// ---------------------------------------------------------------------------
 
 export const TUTORIALS: Record<string, Tutorial> = {
   blink: blinkTutorial,
   plant: plantTutorial,
   weather: weatherTutorial,
   motor: motorTutorial,
+  speedtrap: speedTrapTutorial,
 };

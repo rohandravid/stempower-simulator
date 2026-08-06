@@ -348,6 +348,16 @@ function applyModuleEffects(circuit: Circuit, graph: Graph): ModuleEffects {
           };
         }
       }
+    } else if (comp.kind === 'radar') {
+      const on = moduleIsPowered(graph, comp, false);
+      effects.powered[comp.id] = on;
+      if (!on) continue;
+      const speedMph = comp.props.speedMph ?? 0;
+      const aoNet = graph.net(comp.pins.ao);
+      drives.push(() => {
+        // AO voltage rises with the target's speed, like the real module.
+        effects.analogVolts.set(aoNet, 5 * Math.min(1, Math.max(0, speedMph / 100)));
+      });
     } else if (comp.kind === 'l298n') {
       const on = moduleIsPowered(graph, comp, false);
       effects.powered[comp.id] = on;
@@ -534,10 +544,12 @@ export function analyzeStatic(circuit: Circuit): StaticAnalysis {
   const MODULE_TITLES: Partial<Record<string, string>> = {
     lm393: 'LM393 soil moisture sensor',
     dht11: 'DHT11 sensor',
+    radar: 'Radar speed sensor',
     l298n: 'L298N motor driver',
   };
   const MODULE_OUT_ROLES: Partial<Record<string, string[]>> = {
     lm393: ['do', 'ao'],
+    radar: ['ao'],
     l298n: ['out1', 'out2'],
   };
   for (const comp of circuit.components) {

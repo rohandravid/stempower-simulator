@@ -221,6 +221,16 @@ export const MODULE_DEFS: Partial<Record<ComponentKind, ModuleDef>> = {
       { role: 'gnd', label: 'GND', dx: 70, dy: 74 },
     ],
   },
+  radar: {
+    w: 100,
+    h: 76,
+    title: 'Speed sensor',
+    pins: [
+      { role: 'vcc', label: 'VCC', dx: 16, dy: 76 },
+      { role: 'gnd', label: 'GND', dx: 50, dy: 76 },
+      { role: 'ao', label: 'AO', dx: 84, dy: 76 },
+    ],
+  },
   l298n: {
     w: 132,
     h: 88,
@@ -337,6 +347,7 @@ export function makeModule(circuit: Circuit, kind: ComponentKind, at?: { x: numb
     props.temperatureC = 24;
     props.humidityPct = 60;
   }
+  if (kind === 'radar') props.speedMph = 35;
   return { id, kind, pins, props, pos: at ?? freeModulePos(circuit, def.w, def.h) };
 }
 
@@ -665,6 +676,76 @@ void loop() {
 }
 `;
 
+function speedTrapCircuit(): Circuit {
+  const redLed: PlacedComponent = {
+    id: freshId('led'), kind: 'led',
+    pins: { anode: 'bb.b5', cathode: 'bb.b6' }, props: { color: '#e63b3b' },
+  };
+  const redRes: PlacedComponent = {
+    id: freshId('res'), kind: 'resistor',
+    pins: { p1: 'bb.d6', p2: 'bb.d9' }, props: { ohms: 220 },
+  };
+  const blueLed: PlacedComponent = {
+    id: freshId('led'), kind: 'led',
+    pins: { anode: 'bb.b12', cathode: 'bb.b13' }, props: { color: '#3b8fe6' },
+  };
+  const blueRes: PlacedComponent = {
+    id: freshId('res'), kind: 'resistor',
+    pins: { p1: 'bb.d13', p2: 'bb.d16' }, props: { ohms: 220 },
+  };
+  const base: Circuit = { components: [redLed, redRes, blueLed, blueRes], wires: [] };
+  const sensor = makeModule(base, 'radar', { x: 440, y: MODULE_STRIP_Y });
+  return {
+    components: [...base.components, sensor],
+    wires: [
+      makeWire('uno.D12', 'bb.a5', '#e63b3b'),
+      makeWire('bb.a9', 'uno.GND1', '#444444'),
+      makeWire('uno.D13', 'bb.a12', '#3b8fe6'),
+      makeWire('bb.a16', 'uno.GND2', '#444444'),
+      makeWire('uno.5V', sensor.pins.vcc, '#e6a23b'),
+      makeWire(sensor.pins.gnd, 'uno.GND1', '#444444'),
+      makeWire(sensor.pins.ao, 'uno.A0', '#9c27b0'),
+    ],
+  };
+}
+
+const SPEED_TRAP_SKETCH = `// Speed trap: catch speeders with a radar sensor and flashing lights.
+// Drag the speed slider on the radar module and watch what happens!
+
+const int SPEED_PIN = A0;    // AO pin of the radar sensor
+const int RED_PIN = 12;
+const int BLUE_PIN = 13;
+const int SPEED_LIMIT = 55;  // mph
+
+void setup() {
+  pinMode(RED_PIN, OUTPUT);
+  pinMode(BLUE_PIN, OUTPUT);
+  Serial.begin(9600);
+}
+
+void loop() {
+  int reading = analogRead(SPEED_PIN);
+  int mph = map(reading, 0, 1023, 0, 100);
+  Serial.print("Speed: ");
+  Serial.print(mph);
+  Serial.println(" mph");
+
+  if (mph > SPEED_LIMIT) {
+    // Busted! Alternate red and blue like a police light.
+    digitalWrite(RED_PIN, HIGH);
+    digitalWrite(BLUE_PIN, LOW);
+    delay(200);
+    digitalWrite(RED_PIN, LOW);
+    digitalWrite(BLUE_PIN, HIGH);
+    delay(200);
+  } else {
+    digitalWrite(RED_PIN, LOW);
+    digitalWrite(BLUE_PIN, LOW);
+    delay(200);
+  }
+}
+`;
+
 export interface Demo {
   id: string;
   name: string;
@@ -700,5 +781,11 @@ export const DEMOS: Demo[] = [
     blurb: 'Spin a DC motor and set its speed with a knob.',
     teaches: ['analogRead', 'analogWrite', 'map'],
     build: motorCircuit, sketch: MOTOR_SKETCH,
+  },
+  {
+    id: 'speedtrap', name: 'Speed trap',
+    blurb: 'A radar sensor triggers alternating red/blue lights when a car speeds past.',
+    teaches: ['analogRead', 'map', 'if / else'],
+    build: speedTrapCircuit, sketch: SPEED_TRAP_SKETCH,
   },
 ];

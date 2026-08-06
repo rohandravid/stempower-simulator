@@ -55,6 +55,7 @@ export const STR = {
   paletteKnob: 'Knob (pot)',
   paletteLm393: 'Soil moisture',
   paletteDht11: 'Temp & humidity',
+  paletteRadar: 'Speed sensor',
   paletteL298n: 'Motor driver',
   paletteMotor: 'DC motor',
   paletteBattery: '9V battery',

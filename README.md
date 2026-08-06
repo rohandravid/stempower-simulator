@@ -31,19 +31,21 @@ Without the key the panel politely disables itself; the simulator is unaffected.
 
 - **Build circuits** on an SVG Uno + half-size breadboard: LEDs, resistors, push
   buttons, a potentiometer, an LM393 soil moisture sensor module, a DHT11
-  temperature/humidity sensor, an L298N motor driver, a DC motor, and a 9V
-  battery pack. Tap a hole, then another hole, to run a wire. Drag parts to
-  move them (legs snap to holes). Tap a part to select it, then Delete (key or
-  button) to remove it. Reversed a LED? Select it and hit **Flip LED** instead
-  of rewiring.
-- **Sensor and driver modules** (LM393, DHT11, L298N) float below the
+  temperature/humidity sensor, a radar speed sensor, an L298N motor driver, a
+  DC motor, and a 9V battery pack. Tap a hole, then another hole, to run a
+  wire. Drag parts to move them (legs snap to holes). Tap a part to select
+  it, then Delete (key or button) to remove it. Reversed a LED? Select it and
+  hit **Flip LED** instead of rewiring.
+- **Sensor and driver modules** (LM393, DHT11, radar, L298N) float below the
   breadboard and wire up with normal wires like any other part. Each shows a
   green power dot once it's correctly powered. The LM393 has a draggable
   dry↔wet moisture slider and exposes both a DO (digital: HIGH when the soil
   is dry) and AO (analog: voltage rises as the soil dries) output. The DHT11 has
   draggable T (temperature) and H (humidity) sliders and is read from code
   with `#include <DHT.h>`, `DHT dht(2, DHT11);`, `dht.readTemperature()`,
-  `dht.readHumidity()`, and `isnan()` for sensor-error checks. The L298N takes
+  `dht.readHumidity()`, and `isnan()` for sensor-error checks. The radar speed
+  sensor has a draggable 0–100 mph slider and exposes an AO (analog: voltage
+  rises with speed) output, read with `analogRead()`. The L298N takes
   an ENA PWM speed input plus IN1/IN2 direction pins and drives the animated
   DC motor (leave ENA unwired and it behaves like the board's factory
   jumper — full speed); the motor's rotor visibly shows current speed and
@@ -65,12 +67,13 @@ Without the key the panel politely disables itself; the simulator is unaffected.
   and open-circuit hints, short-circuit detection, and parse/runtime errors with
   line numbers in plain language.
 - **Interact live**: hold the button cap, twist the pot knob, drag the LM393
-  moisture slider, or drag the DHT11's T/H sliders while the sketch runs; the
-  serial monitor streams output.
+  moisture slider, drag the DHT11's T/H sliders, or drag the radar sensor's
+  speed slider while the sketch runs; the serial monitor streams output.
 - **Load a project** from the toolbar's **Projects** menu: Blink + button,
-  Thirsty plant alarm (LM393), Weather station (DHT11), and Motor speed
-  control (L298N) each swap in a matching circuit and sketch. **Clear circuit**
-  wipes the board back to empty when you want to start from scratch.
+  Thirsty plant alarm (LM393), Weather station (DHT11), Motor speed
+  control (L298N), and Speed trap (radar sensor + alternating red/blue LEDs)
+  each swap in a matching circuit and sketch. **Clear circuit** wipes the
+  board back to empty when you want to start from scratch.
 
 ## Architecture
 
@@ -105,7 +108,7 @@ Design decisions worth knowing:
 ## Testing
 
 ```bash
-npm test           # vitest: 67 tests — interpreter, circuit analysis, controller, app smoke
+npm test           # vitest: 94 tests — interpreter, circuit analysis, controller, app smoke
 npm run build      # tsc type-check + production build
 ```
 
@@ -114,7 +117,8 @@ of the test suite: blink timing, control flow, functions/recursion, `#define`,
 Serial formatting, parse-error positions, infinite-loop yielding, pullup button
 reads, reversed/missing-resistor/short detection, module analysis (LM393
 DO/AO thresholds, DHT11 reads, L298N ENA/direction → motor speed), and a full
-demo-circuit integration test through the controller.
+demo-circuit integration test through the controller, plus the radar sensor's
+AO-to-speed scaling and its speed-trap demo.
 
 ## Known limitations (v1)
 

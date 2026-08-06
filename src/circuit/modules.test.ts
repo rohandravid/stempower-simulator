@@ -98,6 +98,48 @@ describe('DHT11', () => {
   });
 });
 
+describe('Radar speed sensor', () => {
+  function circuitWith(speedMph: number, extraWires: (s: PlacedComponent) => ReturnType<typeof makeWire>[]): Circuit {
+    const sensor = makeModule({ components: [], wires: [] }, 'radar', { x: 440, y: 470 });
+    sensor.props.speedMph = speedMph;
+    return {
+      components: [sensor],
+      wires: [
+        makeWire('uno.5V', sensor.pins.vcc),
+        makeWire(sensor.pins.gnd, 'uno.GND1'),
+        ...extraWires(sensor),
+      ],
+    };
+  }
+
+  it('AO feeds analogRead, rising with speed', () => {
+    const stopped = circuitWith(0, (s) => [makeWire(s.pins.ao, 'uno.A0')]);
+    expect(analyzeDynamic(stopped, outputs()).analogReads.A0).toBe(0);
+    const half = circuitWith(50, (s) => [makeWire(s.pins.ao, 'uno.A0')]);
+    expect(analyzeDynamic(half, outputs()).analogReads.A0).toBe(512);
+    const fast = circuitWith(100, (s) => [makeWire(s.pins.ao, 'uno.A0')]);
+    expect(analyzeDynamic(fast, outputs()).analogReads.A0).toBe(1023);
+  });
+
+  it('clamps speeds above the 0-100 mph range', () => {
+    const over = circuitWith(150, (s) => [makeWire(s.pins.ao, 'uno.A0')]);
+    expect(analyzeDynamic(over, outputs()).analogReads.A0).toBe(1023);
+  });
+
+  it('does nothing when unpowered, and static lint says so', () => {
+    const sensor = makeModule({ components: [], wires: [] }, 'radar', { x: 440, y: 470 });
+    sensor.props.speedMph = 80;
+    const circuit: Circuit = {
+      components: [sensor],
+      wires: [makeWire(sensor.pins.ao, 'uno.A0')], // no VCC/GND
+    };
+    const dyn = analyzeDynamic(circuit, outputs());
+    expect(dyn.modulesPowered[sensor.id]).toBe(false);
+    expect(dyn.analogReads.A0).toBe(0);
+    expect(analyzeStatic(circuit).diagnostics.some((d) => d.message.includes('not powered'))).toBe(true);
+  });
+});
+
 describe('L298N + motor + battery', () => {
   function rig(): { circuit: Circuit; motorId: string; driver: PlacedComponent } {
     let base: Circuit = { components: [], wires: [] };
@@ -191,6 +233,17 @@ describe('demo library', () => {
       const diags = analyzeStatic(circuit).diagnostics;
       expect(diags, `${demo.name} should have no wiring complaints, got: ${diags.map((d) => d.message).join(' | ')}`).toEqual([]);
     }
+  });
+
+  it('speed trap demo: red/blue LEDs light per the alternating drive from code', () => {
+    const demo = DEMOS.find((d) => d.id === 'speedtrap')!;
+    const circuit = demo.build();
+    const sensor = circuit.components.find((c) => c.kind === 'radar')!;
+    sensor.props.speedMph = 80; // over the sketch's 55 mph limit
+    const redOn = outputs({ modes: { D12: 'OUTPUT', D13: 'OUTPUT' }, digital: { D12: 1, D13: 0 } });
+    const dyn = analyzeDynamic(circuit, redOn);
+    expect(dyn.analogReads.A0).toBeGreaterThan(700);
+    expect(Object.values(dyn.leds).filter((l) => l.lit)).toHaveLength(1);
   });
 
   it('thirsty plant demo: LED follows dry soil while running', () => {

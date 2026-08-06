@@ -20,13 +20,14 @@ export type ComponentKind =
   | 'potentiometer'
   | 'lm393'
   | 'dht11'
+  | 'radar'
   | 'l298n'
   | 'motor'
   | 'battery';
 
 /** Kinds that float freely on the canvas instead of plugging into the breadboard. */
 export const MODULE_KINDS: ReadonlySet<ComponentKind> = new Set([
-  'lm393', 'dht11', 'l298n', 'motor', 'battery',
+  'lm393', 'dht11', 'radar', 'l298n', 'motor', 'battery',
 ]);
 
 export interface ComponentProps {
@@ -43,6 +44,8 @@ export interface ComponentProps {
   /** DHT11: simulated readings, set by dragging the module's sliders. */
   temperatureC?: number;
   humidityPct?: number;
+  /** Radar speed sensor: simulated target speed in mph, set by dragging the module's slider. */
+  speedMph?: number;
 }
 
 export interface PlacedComponent {
@@ -56,6 +59,7 @@ export interface PlacedComponent {
    *   potentiometer: end1, wiper, end2
    *   lm393: vcc, gnd, do, ao        (module — pins are its own mod.* nodes)
    *   dht11: vcc, data, gnd
+   *   radar: vcc, gnd, ao
    *   l298n: vcc, gnd, ena, in1, in2, out1, out2
    *   motor: m1, m2
    *   battery: plus, minus

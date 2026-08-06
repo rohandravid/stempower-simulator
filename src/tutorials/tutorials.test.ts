@@ -15,6 +15,7 @@ const RUNNING_OUTPUTS: Record<string, PinOutputs> = {
   plant: { modes: { D13: 'OUTPUT', D7: 'INPUT' }, digital: { D13: 1 }, pwm: {} },
   weather: { modes: {}, digital: {}, pwm: {} },
   motor: { modes: { D9: 'OUTPUT', D8: 'OUTPUT', D7: 'OUTPUT' }, digital: { D8: 1, D7: 0 }, pwm: { D9: 200 } },
+  speedtrap: { modes: { D12: 'OUTPUT', D13: 'OUTPUT' }, digital: { D12: 1, D13: 0 }, pwm: {} },
 };
 
 /** Put user-interactive parts in the state the final tutorial steps ask for. */
@@ -25,6 +26,7 @@ function withInteractions(circuit: Circuit): Circuit {
       if (c.kind === 'button') return { ...c, props: { ...c.props, pressed: true } };
       if (c.kind === 'lm393') return { ...c, props: { ...c.props, moisture: 0.2 } };
       if (c.kind === 'dht11') return { ...c, props: { ...c.props, temperatureC: 35 } };
+      if (c.kind === 'radar') return { ...c, props: { ...c.props, speedMph: 80 } };
       return c;
     }),
   };

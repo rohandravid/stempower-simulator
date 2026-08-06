@@ -22,6 +22,7 @@ const GROUPS: Array<{ title: string; parts: Part[] }> = [
     parts: [
       { kind: 'lm393', icon: '🌱', label: STR.paletteLm393 },
       { kind: 'dht11', icon: '🌡️', label: STR.paletteDht11 },
+      { kind: 'radar', icon: '📡', label: STR.paletteRadar },
     ],
   },
   {

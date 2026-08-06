@@ -35,7 +35,7 @@ interface DragState {
 
 interface SliderDrag {
   compId: string;
-  prop: 'position' | 'moisture' | 'temperatureC' | 'humidityPct';
+  prop: 'position' | 'moisture' | 'temperatureC' | 'humidityPct' | 'speedMph';
   startX: number;
   startValue: number;
   /** Value change per horizontal view-unit dragged. */
@@ -697,6 +697,34 @@ function ModuleBody(props: ModuleViewProps) {
             <rect x={trackX} y={44} width={trackW} height={5} rx={2.5} fill="#2c5b93" />
             <rect x={trackX} y={44} width={trackW * Math.min(1, Math.max(0, hFrac))} height={5} rx={2.5} fill="#7cc4ff" />
             <circle cx={trackX + trackW * Math.min(1, Math.max(0, hFrac))} cy={46.5} r={6} fill="#f4f6f4" stroke="#3a6ea0" strokeWidth={1.5} />
+          </g>
+        </g>
+      );
+    }
+    case 'radar': {
+      const speed = comp.props.speedMph ?? 0;
+      const trackX = 10;
+      const trackW = def.w - 20;
+      const frac = Math.min(1, Math.max(0, speed / 100));
+      return (
+        <g>
+          <g onPointerDown={onBodyDown} style={grab}>
+            <rect width={def.w} height={def.h} rx={6} fill="#3a3f6e" stroke="#26294a" strokeWidth={1.5} />
+            <text x={def.w / 2} y={13} textAnchor="middle" fontSize={9.5} fontWeight={700} fill="#eceafa" fontFamily="system-ui">
+              {def.title}
+            </text>
+            <circle cx={def.w - 10} cy={10} r={3} fill={powered ? '#5df06c' : '#302f56'} stroke="#1e1d3a" />
+            {/* dish */}
+            <path d="M 10 24 A 9 9 0 0 1 24 24 Z" fill="#c9cfd4" stroke="#8b9297" strokeWidth={1} />
+            <text x={30} y={29} fontSize={16} fontFamily="system-ui">🚓</text>
+          </g>
+          <g style={{ cursor: 'ew-resize' }} onPointerDown={(e) => onSliderDown(comp, 'speedMph', trackW, 0, 100, e)}>
+            <text x={trackX} y={48} fontSize={9} fontWeight={700} fill="#c7ccf5" fontFamily="system-ui">
+              {Math.round(speed)} mph
+            </text>
+            <rect x={trackX} y={54} width={trackW} height={5} rx={2.5} fill="#26294a" />
+            <rect x={trackX} y={54} width={trackW * frac} height={5} rx={2.5} fill="#ff5c5c" />
+            <circle cx={trackX + trackW * frac} cy={56.5} r={7} fill="#f4f6f4" stroke="#9c2e2e" strokeWidth={1.5} />
           </g>
         </g>
       );
