@@ -27,6 +27,12 @@ export const STR = {
   tutorialExit: 'Exit tutorial',
   tutorialCheckDone: 'Nice work! Press Next to continue.',
   tutorialInsertCode: '⤵ Put this code in the editor',
+  tutorialInsertBlocks: '⤵ Put these blocks in the editor',
+  tutorialBlockPreviewHint: 'Shown as blocks, since Block Mode is on:',
+
+  // Code editor mode toggle
+  modeText: 'Text',
+  modeBlocks: 'Blocks',
 
   // Tabs
   tabCode: 'Code',

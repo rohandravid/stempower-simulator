@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { autoPlace, demoCircuit, DEMO_SKETCH, type Demo } from './circuit/model';
 import type { Circuit, CircuitDiagnostic, ComponentKind } from './circuit/types';
 import { Assistant, type AssistantContext } from './components/Assistant';
+import { BlockEditor } from './components/blocks/BlockEditor';
 import { CircuitCanvas, type Selection } from './components/CircuitCanvas';
 import { Diagnostics } from './components/Diagnostics';
 import { Editor } from './components/Editor';
@@ -10,6 +11,7 @@ import { SerialMonitor } from './components/SerialMonitor';
 import { Toolbar } from './components/Toolbar';
 import { TutorialPanel } from './components/TutorialPanel';
 import { STR } from './i18n/strings';
+import { parseSketch } from './interpreter/parser';
 import { SimController } from './sim/controller';
 import { TUTORIALS, type Tutorial } from './tutorials/tutorials';
 
@@ -43,6 +45,27 @@ function App() {
   const [selection, setSelection] = useState<Selection>(null);
   const [tab, setTab] = useState<Tab>('code');
   const [tutorial, setTutorial] = useState<ActiveTutorial | null>(null);
+  const [blockMode, setBlockMode] = useState(false);
+  const [blockModeError, setBlockModeError] = useState<string | null>(null);
+
+  const toggleBlockMode = () => {
+    if (!blockMode) {
+      try {
+        parseSketch(code);
+      } catch (err) {
+        setBlockModeError(
+          `Fix the error in the code first, then switch to Blocks. (${err instanceof Error ? err.message : String(err)})`,
+        );
+        return;
+      }
+    }
+    setBlockModeError(null);
+    setBlockMode((v) => !v);
+  };
+
+  useEffect(() => {
+    setBlockModeError(null);
+  }, [code]);
 
   // Drive the simulation from requestAnimationFrame while running.
   useEffect(() => {
@@ -227,6 +250,7 @@ function App() {
                 setCode(snippet);
                 setTab('code');
               }}
+              blockMode={blockMode}
             />
           )}
           <div className="circuit-canvas">
@@ -254,8 +278,32 @@ function App() {
               <span className="tab-icon" aria-hidden="true">✨</span> {STR.tabAiHelper}
             </button>
           </div>
+          {tab === 'code' && (
+            <div className="code-mode-switch">
+              <div className="mode-toggle" role="group" aria-label="Code editor mode">
+                <button
+                  type="button"
+                  className="mode-toggle-btn"
+                  data-active={!blockMode}
+                  onClick={() => blockMode && toggleBlockMode()}
+                >
+                  ✏️ {STR.modeText}
+                </button>
+                <button
+                  type="button"
+                  className="mode-toggle-btn"
+                  data-active={blockMode}
+                  onClick={() => !blockMode && toggleBlockMode()}
+                >
+                  🧩 {STR.modeBlocks}
+                </button>
+              </div>
+              {blockModeError && <span className="mode-toggle-error">{blockModeError}</span>}
+            </div>
+          )}
           <div className="tab-body">
-            {tab === 'code' && (
+            {tab === 'code' && blockMode && <BlockEditor value={code} onChange={setCode} />}
+            {tab === 'code' && !blockMode && (
               <Editor
                 value={code}
                 onChange={setCode}

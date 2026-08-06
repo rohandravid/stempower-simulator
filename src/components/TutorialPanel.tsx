@@ -1,5 +1,21 @@
+import { useMemo } from 'react';
+import { astToBlocks } from '../blocks/fromAst';
+import { GlobalsStack, BlockStack } from './blocks/BlockStack';
 import { STR } from '../i18n/strings';
+import { parseSketch } from '../interpreter/parser';
 import type { Tutorial } from '../tutorials/tutorials';
+
+/** Best-effort preview of a code snippet as read-only blocks; null if it doesn't parse. */
+function useBlockPreview(code: string | undefined) {
+  return useMemo(() => {
+    if (!code) return null;
+    try {
+      return astToBlocks(parseSketch(code));
+    } catch {
+      return null;
+    }
+  }, [code]);
+}
 
 export function TutorialPanel(props: {
   tutorial: Tutorial;
@@ -11,9 +27,11 @@ export function TutorialPanel(props: {
   onSkip: () => void;
   onExit: () => void;
   onInsertCode: (code: string) => void;
+  blockMode: boolean;
 }) {
-  const { tutorial, stepIndex, stepDone, onBack, onNext, onSkip, onExit, onInsertCode } = props;
+  const { tutorial, stepIndex, stepDone, onBack, onNext, onSkip, onExit, onInsertCode, blockMode } = props;
   const step = tutorial.steps[stepIndex];
+  const blockPreview = useBlockPreview(blockMode ? step.code : undefined);
   const total = tutorial.steps.length;
   const isLast = stepIndex === total - 1;
   const progress = ((stepIndex + (stepDone ? 1 : 0)) / total) * 100;
@@ -37,7 +55,37 @@ export function TutorialPanel(props: {
         {step.body.split('\n\n').map((para, i) => (
           <p className="tutorial-text" key={i}>{para}</p>
         ))}
-        {step.code && (
+        {step.code && blockPreview && (
+          <div className="tutorial-code tutorial-code-blocks">
+            <div className="tutorial-block-hint">{STR.tutorialBlockPreviewHint}</div>
+            <div className="block-editor block-editor-preview">
+              <div className="block-editor-scroll">
+                {blockPreview.globals.length > 0 && (
+                  <section className="blk-section">
+                    <h3 className="blk-section-title">🧮 Variables</h3>
+                    <GlobalsStack list={blockPreview.globals} />
+                  </section>
+                )}
+                {blockPreview.setup.length > 0 && (
+                  <section className="blk-section">
+                    <h3 className="blk-section-title">🔧 setup()</h3>
+                    <BlockStack list={blockPreview.setup} listId="setup" depth={0} />
+                  </section>
+                )}
+                {blockPreview.loop.length > 0 && (
+                  <section className="blk-section">
+                    <h3 className="blk-section-title">🔁 loop()</h3>
+                    <BlockStack list={blockPreview.loop} listId="loop" depth={0} />
+                  </section>
+                )}
+              </div>
+            </div>
+            <button type="button" className="btn btn-sm btn-ghost" onClick={() => onInsertCode(step.code!)}>
+              {STR.tutorialInsertBlocks}
+            </button>
+          </div>
+        )}
+        {step.code && !blockPreview && (
           <div className="tutorial-code">
             <pre>{step.code}</pre>
             <button type="button" className="btn btn-sm btn-ghost" onClick={() => onInsertCode(step.code!)}>
