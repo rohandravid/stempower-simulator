@@ -11,11 +11,11 @@ interface Props {
 const SAMPLE_W = 32;
 const SAMPLE_H = 24;
 /** Per-pixel luminance delta (0-255) counted as "this pixel moved". */
-const DIFF_THRESHOLD = 20;
+const DIFF_THRESHOLD = 12;
 /** How quickly the reported speed follows the raw motion signal (0-1, higher = snappier). */
-const SMOOTHING = 0.4;
+const SMOOTHING = 0.55;
 /** Fraction of pixels changing that maps to a 100 mph reading. */
-const FULL_SCALE_FRACTION = 0.4;
+const FULL_SCALE_FRACTION = 0.18;
 
 export function CameraSpeedSensor({ onSpeed, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
