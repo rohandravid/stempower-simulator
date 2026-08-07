@@ -10,6 +10,7 @@ import {
 import type { ModuleDef } from '../circuit/model';
 import type { Circuit, LedState, NodeId, PlacedComponent } from '../circuit/types';
 import { STR } from '../i18n/strings';
+import { CameraSpeedSensor } from './CameraSpeedSensor';
 
 export type Selection = { type: 'component' | 'wire'; id: string } | null;
 
@@ -54,6 +55,7 @@ export function CircuitCanvas({ circuit, onCircuitChange, leds, motors, modulesP
   const [drag, setDrag] = useState<DragState | null>(null);
   const [sliderDrag, setSliderDrag] = useState<SliderDrag | null>(null);
   const [pressedButton, setPressedButton] = useState<string | null>(null);
+  const [cameraCompId, setCameraCompId] = useState<string | null>(null);
 
   const posOf = (id: NodeId) => resolveNodePosition(circuit, id);
 
@@ -220,18 +222,21 @@ export function CircuitCanvas({ circuit, onCircuitChange, leds, motors, modulesP
   const dragTransform = (id: string): string | undefined =>
     drag && drag.compId === id && drag.moved ? `translate(${drag.dx}, ${drag.dy})` : undefined;
 
+  const cameraComp = cameraCompId ? circuit.components.find((c) => c.id === cameraCompId) : undefined;
+
   return (
-    <svg
-      ref={svgRef}
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-      role="img"
-      aria-label="Circuit board"
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      onPointerDown={onBackgroundDown}
-      onPointerDownCapture={onRootDownCapture}
-    >
+    <>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+        role="img"
+        aria-label="Circuit board"
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onPointerDown={onBackgroundDown}
+        onPointerDownCapture={onRootDownCapture}
+      >
       <UnoBoard />
       <Breadboard />
 
@@ -266,6 +271,8 @@ export function CircuitCanvas({ circuit, onCircuitChange, leds, motors, modulesP
             transform={dragTransform(comp.id)}
             onBodyDown={(e) => beginDrag(comp, e)}
             onSliderDown={beginSlider}
+            cameraActive={cameraCompId === comp.id}
+            onToggleCamera={() => setCameraCompId((id) => (id === comp.id ? null : comp.id))}
           />
         );
       })}
@@ -350,6 +357,13 @@ export function CircuitCanvas({ circuit, onCircuitChange, leds, motors, modulesP
         }
       })}
     </svg>
+    {cameraComp && (
+      <CameraSpeedSensor
+        onSpeed={(mph) => patchComponent(cameraComp.id, (c) => ({ ...c, props: { ...c.props, speedMph: mph } }))}
+        onClose={() => setCameraCompId(null)}
+      />
+    )}
+    </>
   );
 }
 
@@ -599,6 +613,9 @@ interface ModuleViewProps {
     max: number,
     e: React.PointerEvent,
   ) => void;
+  /** Radar module only: true while its speedMph is being driven by the camera. */
+  cameraActive: boolean;
+  onToggleCamera: () => void;
 }
 
 function ModuleView(props: ModuleViewProps) {
@@ -639,7 +656,7 @@ function ModuleView(props: ModuleViewProps) {
 
 /** The card + interactive bits, drawn in module-local coordinates. */
 function ModuleBody(props: ModuleViewProps) {
-  const { comp, def, powered, motorSpeed, onBodyDown, onSliderDown } = props;
+  const { comp, def, powered, motorSpeed, onBodyDown, onSliderDown, cameraActive, onToggleCamera } = props;
   const grab = { cursor: 'grab' as const };
 
   switch (comp.kind) {
@@ -718,13 +735,30 @@ function ModuleBody(props: ModuleViewProps) {
             <path d="M 10 24 A 9 9 0 0 1 24 24 Z" fill="#c9cfd4" stroke="#8b9297" strokeWidth={1} />
             <text x={30} y={29} fontSize={16} fontFamily="system-ui">🚓</text>
           </g>
-          <g style={{ cursor: 'ew-resize' }} onPointerDown={(e) => onSliderDown(comp, 'speedMph', trackW, 0, 100, e)}>
+          {/* camera-motion toggle, tucked beside the dish where the card is otherwise empty */}
+          <g
+            style={{ cursor: 'pointer' }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              onToggleCamera();
+            }}
+          >
+            <circle cx={def.w - 22} cy={27} r={9} fill={cameraActive ? '#ff5c5c' : '#26294a'} stroke="#1e1d3a" />
+            <text x={def.w - 22} y={30.5} textAnchor="middle" fontSize={9} fontFamily="system-ui">📷</text>
+            <title>{cameraActive ? 'Turn off camera input' : 'Use camera to detect motion speed'}</title>
+          </g>
+          <g
+            style={{ cursor: cameraActive ? 'default' : 'ew-resize' }}
+            onPointerDown={(e) => !cameraActive && onSliderDown(comp, 'speedMph', trackW, 0, 100, e)}
+          >
             <text x={trackX} y={48} fontSize={9} fontWeight={700} fill="#c7ccf5" fontFamily="system-ui">
-              {Math.round(speed)} mph
+              {Math.round(speed)} mph{cameraActive ? ' 🔴' : ''}
             </text>
             <rect x={trackX} y={54} width={trackW} height={5} rx={2.5} fill="#26294a" />
             <rect x={trackX} y={54} width={trackW * frac} height={5} rx={2.5} fill="#ff5c5c" />
-            <circle cx={trackX + trackW * frac} cy={56.5} r={7} fill="#f4f6f4" stroke="#9c2e2e" strokeWidth={1.5} />
+            {!cameraActive && (
+              <circle cx={trackX + trackW * frac} cy={56.5} r={7} fill="#f4f6f4" stroke="#9c2e2e" strokeWidth={1.5} />
+            )}
           </g>
         </g>
       );

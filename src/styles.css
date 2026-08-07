@@ -335,6 +335,7 @@ body,
 /* -------------------------------------------------------- circuit canvas */
 
 .circuit-canvas {
+  position: relative;
   background:
     radial-gradient(circle, rgba(79, 70, 229, 0.08) 1px, transparent 1px) 0 0 / 20px 20px,
     linear-gradient(180deg, #fcfdff, var(--panel) 45%);
@@ -362,6 +363,70 @@ body,
 @keyframes motor-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* ---------------------------------------------------------------- camera speed input */
+
+.camera-speed-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 176px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lift);
+  padding: 8px;
+  z-index: 10;
+}
+
+.camera-speed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.camera-speed-close {
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+
+.camera-speed-close:hover {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.camera-speed-video {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #101416;
+  transform: scaleX(-1); /* mirror, like a selfie camera */
+}
+
+.camera-speed-hint {
+  margin: 6px 0 0;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--ink-faint);
+}
+
+.camera-speed-error {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--error-ink);
 }
 
 /* ---------------------------------------------------------- side pane */
